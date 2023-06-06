@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "948194303133",
+    "firebase_url": "https://weedydocs-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "weedydocs",
+    "storage_bucket": "weedydocs.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:948194303133:android:8c6768a852dc9df9a90874",
+        "android_client_info": {
+          "package_name": "com.example.weedydocs"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "948194303133-uvu5b9nus8rh6snpudj599r5kt8ofaii.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.weedydocs",
+            "certificate_hash": "d6550c6393f13d895192615d33d25470498a23ce"
+          }
+        },
+        {
+          "client_id": "948194303133-j8bs604qjrdv68rudbv78gf9oj1o3dfd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXvTTxp3uNDDm_Uv6VQtFjVFnlflCqoZA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "948194303133-j8bs604qjrdv68rudbv78gf9oj1o3dfd.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "948194303133-q72524u8o57i6lms4gl7jr8avjqglvkp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.weedydocs"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
