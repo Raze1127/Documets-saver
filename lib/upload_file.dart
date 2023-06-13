@@ -16,10 +16,6 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_ml_kit/google_ml_kit.dart' as mlkit;
 import 'package:google_ml_kit/google_ml_kit.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:http/http.dart' as http;
 
@@ -325,7 +321,13 @@ class _AddFileState extends State<AddFile> {
                          ),
                        ),
                        onPressed: () async {
+                         print("HI");
                          final imagesPath = await CunningDocumentScanner.getPictures();
+
+                         // File? scannedDoc = await DocumentScannerFlutter.launch(context);
+                         // var imagesPath =  scannedDoc!.path;
+                        // final imagesPath = await CunningDocumentScanner.getPictures();
+
                          if (imagesPath != null){
 
                            final textDetector = mlkit.GoogleMlKit.vision.textRecognizer();

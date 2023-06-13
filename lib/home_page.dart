@@ -9,7 +9,7 @@ import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:water_drop_nav_bar/water_drop_nav_bar.dart';
 import 'package:weedydocs/shared_docs.dart';
-import 'package:weedydocs/userDocs.dart';
+import 'package:weedydocs/users_docs.dart';
 
 
 

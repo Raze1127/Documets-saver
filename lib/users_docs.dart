@@ -17,7 +17,8 @@ class UserDocs extends StatefulWidget {
   State<UserDocs> createState() => _UserDocsState();
 }
 
-class _UserDocsState extends State<UserDocs> {
+class _UserDocsState extends State<UserDocs>
+    with SingleTickerProviderStateMixin {
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
   firebase_storage.FirebaseStorage storage =
@@ -31,34 +32,41 @@ class _UserDocsState extends State<UserDocs> {
     return 'lol';
   } // пример получения из firebase
 
-  bool _showFolders =
-      true; // состояние, указывающее, что нужно показывать папки
-  late String selectFold; // имя выбранной папки
-  String _selectedFolder = ''; // имя выбранной папки
 
-  void _openFolder(String folderName) {
-    setState(() {
-      _showFolders = false;
-      _selectedFolder = folderName;
-    });
-  }
+  String _selectedFolder = 'root';
+  bool isDocs = false;
 
-  void _backToFolders() {
-    setState(() {
-      _showFolders = true;
-    });
+  Widget? calledWidget;
+
+
+  void switchPage(int newNumber, String selectedFolder) {
+    if (newNumber == 1) {
+      setState(() {
+        isDocs = false;
+        calledWidget = buildFolders();
+      },);
+    } else if (newNumber == 2) {
+      setState(() {
+        isDocs = true;
+        calledWidget = buildDocs(selectedFolder);
+      },);
+    }
   }
 
   Future<bool> _onWillPop() async {
-    if (!_showFolders) {
-      _backToFolders();
+    if (isDocs) {
+      switchPage(1, _selectedFolder);
       return false; // не выходим из приложения или не возвращаемся на предыдущий экран
     }
     return true; // выходим из приложения или возвращаемся на предыдущий экран
   }
 
+
   @override
   Widget build(BuildContext context) {
+    if (calledWidget == null) {
+      switchPage(1, _selectedFolder);
+    }
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -87,7 +95,7 @@ class _UserDocsState extends State<UserDocs> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
                     borderSide:
-                        const BorderSide(color: Colors.black, width: 100),
+                    const BorderSide(color: Colors.black, width: 100),
                   ),
                 ),
               ),
@@ -95,22 +103,15 @@ class _UserDocsState extends State<UserDocs> {
             Padding(
               padding: const EdgeInsets.only(left: 10.0, right: 10.0),
               child: SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.70196,
+                  height: MediaQuery
+                      .of(context)
+                      .size
+                      .height * 0.70196,
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 1000),
-                    transitionBuilder:
-                        (Widget child, Animation<double> animation) {
-                      return SlideTransition(
-                          position: Tween<Offset>(
-                                  begin: const Offset(1.0, 0.0),
-                                  end: Offset.zero)
-                              .animate(animation),
-                          child: child);
-                    },
-                    child: _showFolders
-                        ? buildFolders(context)
-                        : buildDocs(context),
-                  )),
+                    duration: const Duration(milliseconds: 300),
+                    child: calledWidget,
+                  )
+              ),
             )
           ],
         ),
@@ -118,16 +119,19 @@ class _UserDocsState extends State<UserDocs> {
     );
   }
 
-  Widget buildDocs(BuildContext context) {
+  Widget buildDocs(String selectedFolder) {
+    const ValueKey<int>(2);
     final dbRef = FirebaseDatabase.instance.ref();
     return Scaffold(
+      key: const ValueKey<int>(2),
       backgroundColor: const Color(0xFF5656f3),
       body: StreamBuilder(
-        stream: dbRef.child('userUid/folders/$_selectedFolder').onValue,
+        key: UniqueKey(),
+        stream: dbRef
+            .child('userUid/folders/$selectedFolder')
+            .onValue,
         builder: (context, snapshot) {
-          if (snapshot.hasData &&
-              !snapshot.hasError &&
-              snapshot.data!.snapshot.value != null) {
+          if (snapshot.hasData) {
             Map data = snapshot.data!.snapshot.value as Map;
             List item = [];
 
@@ -139,11 +143,10 @@ class _UserDocsState extends State<UserDocs> {
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2),
                 itemBuilder: (context, index) {
+                  Map<dynamic, dynamic> map = snapshot.data?.snapshot
+                      .value as Map;
                   return GestureDetector(
-                    onTap: () {
-                      Navigator.pushNamed(context, 'doc',
-                          arguments: item[index]["key"]);
-                    },
+
                     child: Card(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20.0),
@@ -159,7 +162,10 @@ class _UserDocsState extends State<UserDocs> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               SizedBox(
-                                width: MediaQuery.of(context).size.width * 0.2,
+                                width: MediaQuery
+                                    .of(context)
+                                    .size
+                                    .width * 0.2,
                                 child: Text(
                                   item[index]["key"],
                                   style: GoogleFonts.roboto(
@@ -167,23 +173,23 @@ class _UserDocsState extends State<UserDocs> {
                                           color: Color(0xFFf5f4f9),
                                           fontSize: 16,
                                           shadows: [
-                                        Shadow(
-                                            // bottomLeft
-                                            offset: Offset(-1.0, -1.0),
-                                            color: Colors.black),
-                                        Shadow(
-                                            // bottomRight
-                                            offset: Offset(1.0, -1.0),
-                                            color: Colors.black),
-                                        Shadow(
-                                            // topRight
-                                            offset: Offset(1.0, 1.0),
-                                            color: Colors.black),
-                                        Shadow(
-                                            // topLeft
-                                            offset: Offset(-1.0, 1.0),
-                                            color: Colors.black),
-                                      ])),
+                                            Shadow(
+                                              // bottomLeft
+                                                offset: Offset(-1.0, -1.0),
+                                                color: Colors.black),
+                                            Shadow(
+                                              // bottomRight
+                                                offset: Offset(1.0, -1.0),
+                                                color: Colors.black),
+                                            Shadow(
+                                              // topRight
+                                                offset: Offset(1.0, 1.0),
+                                                color: Colors.black),
+                                            Shadow(
+                                              // topLeft
+                                                offset: Offset(-1.0, 1.0),
+                                                color: Colors.black),
+                                          ])),
                                   overflow: TextOverflow.fade,
                                   maxLines: 2,
                                   softWrap: false,
@@ -209,7 +215,8 @@ class _UserDocsState extends State<UserDocs> {
                                       child: Row(
                                         children: <Widget>[
                                           Icon(entry.value),
-                                          SizedBox(width: 8.0), // Добавьте пространство между иконкой и текстом, если нужно
+                                          SizedBox(width: 8.0),
+                                          // Добавьте пространство между иконкой и текстом, если нужно
                                           Text(entry.key),
                                         ],
                                       ),
@@ -232,18 +239,23 @@ class _UserDocsState extends State<UserDocs> {
     );
   }
 
-  Widget buildFolders(BuildContext context) {
+  Widget buildFolders() {
+    const ValueKey<int>(1);
     final dbRef = FirebaseDatabase.instance.ref();
     return Scaffold(
       backgroundColor: const Color(0xFF5656f3),
+      key: const ValueKey<int>(1),
       body: StreamBuilder(
-        stream: dbRef.child('userUid/folders').onValue,
+        key: UniqueKey(),
+        stream: dbRef
+            .child('userUid/folders')
+            .onValue,
         builder: (context, snapshot) {
           if (snapshot.hasData &&
               !snapshot.hasError &&
               snapshot.data?.snapshot.value != null) {
             Map<dynamic, dynamic> data =
-                snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
+            snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
             List item = [];
 
             data.forEach((index, data) => item.add({"key": index, ...data}));
@@ -256,7 +268,8 @@ class _UserDocsState extends State<UserDocs> {
                 itemBuilder: (context, index) {
                   return GestureDetector(
                     onTap: () {
-                      _openFolder(item[index]['key']);
+                      _selectedFolder = item[index]['key'];
+                      switchPage(2, _selectedFolder);
                     },
                     child: Card(
                       elevation: 0,
@@ -270,7 +283,7 @@ class _UserDocsState extends State<UserDocs> {
                           ),
                           Padding(
                             padding:
-                                const EdgeInsets.only(left: 15.0, right: 15.0),
+                            const EdgeInsets.only(left: 15.0, right: 15.0),
                             child: Text(
                               item[index]['key'],
                               style: GoogleFonts.roboto(
@@ -278,23 +291,23 @@ class _UserDocsState extends State<UserDocs> {
                                       color: Color(0xFFf5f4f9),
                                       fontSize: 18,
                                       shadows: [
-                                    Shadow(
-                                        // bottomLeft
-                                        offset: Offset(-1.0, -1.0),
-                                        color: Colors.black),
-                                    Shadow(
-                                        // bottomRight
-                                        offset: Offset(1.0, -1.0),
-                                        color: Colors.black),
-                                    Shadow(
-                                        // topRight
-                                        offset: Offset(1.0, 1.0),
-                                        color: Colors.black),
-                                    Shadow(
-                                        // topLeft
-                                        offset: Offset(-1.0, 1.0),
-                                        color: Colors.black),
-                                  ])),
+                                        Shadow(
+                                          // bottomLeft
+                                            offset: Offset(-1.0, -1.0),
+                                            color: Colors.black),
+                                        Shadow(
+                                          // bottomRight
+                                            offset: Offset(1.0, -1.0),
+                                            color: Colors.black),
+                                        Shadow(
+                                          // topRight
+                                            offset: Offset(1.0, 1.0),
+                                            color: Colors.black),
+                                        Shadow(
+                                          // topLeft
+                                            offset: Offset(-1.0, 1.0),
+                                            color: Colors.black),
+                                      ])),
                               overflow: TextOverflow.fade,
                               maxLines: 2,
                               softWrap: false,

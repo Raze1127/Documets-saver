@@ -4,11 +4,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:weedydocs/Home.dart';
 import 'package:weedydocs/firebase_options.dart';
-import 'AddFile.dart';
+import 'package:weedydocs/registration.dart';
+import 'package:weedydocs/upload_file.dart';
 import 'Login.dart';
-import 'Register.dart';
+import 'home_page.dart';
 
 
 Future<void> _messageHandler(RemoteMessage message) async {

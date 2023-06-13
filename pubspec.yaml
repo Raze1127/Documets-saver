@@ -31,13 +31,16 @@ dependencies:
   flutter:
     sdk: flutter
 
-#  upload files
+  #  upload files
   file_picker: ^5.3.1
   syncfusion_flutter_pdf: ^21.2.8
   google_ml_kit: ^0.15.0
   docx_to_text: ^1.0.0
   image_picker: ^0.8.7+5
+
+
   cunning_document_scanner: ^1.1.2
+
   permission_handler: ^10.0.0
   path_provider: ^2.0.11
   path: ^1.8.2
