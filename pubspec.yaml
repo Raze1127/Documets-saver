@@ -37,7 +37,8 @@ dependencies:
   google_ml_kit: ^0.15.0
   docx_to_text: ^1.0.0
   image_picker: ^0.8.7+5
-
+  dropdown_textfield: ^1.0.8
+  shared_preferences: ^2.1.2
 
   cunning_document_scanner: ^1.1.2
 
