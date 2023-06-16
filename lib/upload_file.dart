@@ -22,6 +22,8 @@ import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:http/http.dart' as http;
 
+import 'home_page.dart';
+
 class AddFile extends StatefulWidget {
   const AddFile({Key? key}) : super(key: key);
 
@@ -31,7 +33,9 @@ class AddFile extends StatefulWidget {
 
 class _AddFileState extends State<AddFile> {
   final scaffoldKey = GlobalKey<ScaffoldState>();
-
+  bool _isLoading = true;
+  var _isVisible = 0.0;
+  late File fileMain;
 
   firebase_storage.FirebaseStorage storage =
       firebase_storage.FirebaseStorage.instance;
@@ -69,22 +73,7 @@ class _AddFileState extends State<AddFile> {
 
   String fileFormat = '';
 
-  Future<String> fileUpload(File file) async {
-    final ref = FirebaseDatabase.instance.ref();
-    final User? user = FirebaseAuth.instance.currentUser;
-    final uid = user?.uid;
-    var link = await uploadFile(file);
-    ref.child('Users/$uid/folders/$categoryMain/$titleMain').update(  {
 
-      'fileFormat': fileFormat,
-      'tags': tagsMain,
-      'documentLink': link,
-    }).then((value) {
-      
-    });
-
-    return 'lol';
-  }
 
   String fileName = '';
   String fileCategory = '';
@@ -144,34 +133,49 @@ class _AddFileState extends State<AddFile> {
     color: Colors.white,
   );
 
-  Widget butune = ElevatedButton(
-    onPressed: () {
 
-    },
-    style: ElevatedButton.styleFrom(
-      primary: const Color(0xFF3d3efd),
-      onPrimary: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(32.0),
-      ),
-    ),
-    child: const Text(
-      'Save',
-      style: TextStyle(fontSize: 21),
-    ),
-  );
-
-  Widget butun = Text('');
 
   @override
   Widget build(BuildContext context) {
+
     final controller = TextEditingController(text: fileName);
     final controller2 = TextEditingController(text: fileCategory);
-    List<String> tagsMain = [];
-    String titleMain = '';
-    String categoryMain = '';
-    File fileMain;
-    void parseString(String input) {
+
+
+    Future<void> fileUpload() async {
+      final ref = FirebaseDatabase.instance.ref();
+      final User? user = FirebaseAuth.instance.currentUser;
+      final uid = user?.uid;
+      var link = await uploadFile(fileMain);
+      ref.child('Users/$uid/folders/$fileCategory/$fileName').update(  {
+        'fileFormat': fileMain.path.split('.').last,
+        'tags': tagsMain,
+        'documentLink': link,
+      }).then((value) {
+        // ScaffoldMessenger.of(context as BuildContext).showSnackBar(
+        //  const SnackBar(
+        //    content: Text('File uploaded successfully'),
+        //  ));
+        //  //go to home page
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) =>  (const Home()),
+          ),
+        );
+      });
+
+
+    }
+
+
+
+    Widget butun = Text('');
+
+
+
+
+
+    void parseString(String input, File file) {
       List<String> parts = input.split(':');
       String title = parts[1].split('Tags')[0].trim();
       List<String> tags = parts[2]
@@ -186,9 +190,11 @@ class _AddFileState extends State<AddFile> {
       print('Category: $category');
 
       setState(() {
+        fileMain = file;
         fileName = title;
         fileCategory = category;
-        butun = butune;
+        _isLoading = false;
+        _isVisible = 0.0;
         titleMain = title;
         categoryMain = category;
         //controller2.dropDownValue = DropDownValueModel(name: category, value: category);
@@ -196,9 +202,10 @@ class _AddFileState extends State<AddFile> {
       });
     }
 
-    Future<List> getInfo(String doc) async {
+    Future<List> getInfo(String doc, File file) async {
       setState(() {
-        butun = const CircularProgressIndicator();
+        _isLoading = true;
+        _isVisible = 1.0;
       });
       if (doc.length <= 150) {
       } else {
@@ -215,7 +222,7 @@ class _AddFileState extends State<AddFile> {
         "enable_google_results": false,
         "enable_memory": false,
         "input_text":
-            'Given the following document text, identify a possible title (maximum of two words in the language of the document), tags (maximum of two words in the language of the document, not less then 5 tags), and folder (maximum of two words in the language of the document): $doc Please submit your answer in the following format: Title: [Your name here] Tags: [Your tags here] Folder: [Your folder here]',
+            'Given the following document text, identify a possible title (maximum of two words in the language of the document), tags (maximum of two words in the language of the document, not less then 5 tags), and folder (maximum of two words in the language of the document), without any dots: $doc Please submit your answer in the following format: Title: [Your name here] Tags: [Your tags here] Folder: [Your folder here]',
       };
       final response =
           await http.post(url, headers: headers, body: json.encode(payload));
@@ -225,10 +232,14 @@ class _AddFileState extends State<AddFile> {
       var text2 = decodedMessage['message'];
 
       if (response.statusCode == 200) {
-        print(text2);
-        parseString(text2.replaceAll('"', ''));
+        if (kDebugMode) {
+          print(text2);
+        }
+        parseString(text2.replaceAll('"', ''), file);
       } else {
-        print("Чет не работает");
+        if (kDebugMode) {
+          print('Request failed with status: ${response.statusCode}.');
+        }
       }
 
       return [doc];
@@ -245,22 +256,24 @@ class _AddFileState extends State<AddFile> {
         PlatformFile file = result.files.first;
 
         if (file.extension == 'pdf') {
-          print('PDF');
+
           // Load the PDF document
           PdfDocument document =
               PdfDocument(inputBytes: File(file.path!).readAsBytesSync());
 
           // Initialize the PDF text extractor
           PdfTextExtractor extractor = PdfTextExtractor(document);
-          print('PDF');
+
           // Extract text from the PDF document
           String text = extractor.extractText();
           setState(() {
             fileSnip = filePdf;
           });
-          getInfo(text);
+          getInfo(text, File(file.path!));
           print(text);
-          fileMain = File(file.path!);
+          setState(() {
+            fileMain = File(file.path!);
+          });
           fileFormat = 'pdf';
           return text;
         } else if (file.extension == 'txt') {
@@ -268,20 +281,26 @@ class _AddFileState extends State<AddFile> {
 
           // Read the text file
           String text = await File(file.path!).readAsString();
-          getInfo(text);
+          getInfo(text,   File(file.path!));
           fileFormat = 'txt';
           setState(() {
             fileSnip = fileTxt;
           });
-          fileMain = File(file.path!);
+          setState(() {
+            fileMain = File(file.path!);
+
+          });
           return text;
         } else if (file.extension == 'docx' || file.extension == 'doc') {
           // Extract text from the docx file
           final files = File(file.path!);
           final bytes = await files.readAsBytes();
           final text = docxToText(bytes, handleNumbering: false);
-          getInfo(text);
-          fileMain = File(file.path!);
+          getInfo(text,  File(file.path!));
+          setState(() {
+            fileMain = File(file.path!);
+
+          });
           fileFormat = 'docx';
           return text;
         } else if (file.extension == 'jpg' ||
@@ -297,10 +316,11 @@ class _AddFileState extends State<AddFile> {
               extractedText += '${line.text}\n';
             }
           }
-          getInfo(extractedText);
-          fileMain = File(file.path!);
+          getInfo(extractedText, File(file.path!));
+
           fileFormat = 'png';
           setState(() {
+            fileMain = File(file.path!);
             fileSnip = filePhoto;
           });
           return extractedText;
@@ -312,25 +332,6 @@ class _AddFileState extends State<AddFile> {
     }
 
 
-    Future<List<DropDownValueModel>> dropDownList;
-
-    Future<List<DropDownValueModel>>? getFolders() async {
-      final ref = FirebaseDatabase.instance.ref();
-      final snapshot = await ref.child('userUid/folders').get();
-      final foldersData = Map<String, dynamic>.from(snapshot.value as Map);
-      final list = foldersData.keys.map((folderName) {
-        return DropDownValueModel(name: folderName, value: folderName);
-      }).toList();
-
-      return list;
-    }
-
-    @override
-    void initState() {
-      super.initState();
-      dropDownList = getFolders()!;
-    }
-
 
 
 
@@ -339,9 +340,9 @@ class _AddFileState extends State<AddFile> {
 
 
     return FutureBuilder(
-        future: getFolders(),
+
         builder: (BuildContext context, snapshot) {
-          if (snapshot.hasData) {
+          if (true) {
             return Scaffold(
               key: scaffoldKey,
               appBar: AppBar(
@@ -430,8 +431,14 @@ class _AddFileState extends State<AddFile> {
                                       extractedText += '${line.text}\n';
                                     }
                                   }
-                                  getInfo(extractedText);
-                                  print(extractedText);
+
+                                  setState(() {
+                                    fileMain = File(imagesPath.first);
+                                  });
+                                  getInfo(extractedText, File(imagesPath.first));
+                                  if (kDebugMode) {
+                                    print(extractedText);
+                                  }
                                 } else {}
                               },
                               child: Text(
@@ -503,33 +510,37 @@ class _AddFileState extends State<AddFile> {
                           ),
                         ),
 
-
-
-
-
-                        // DropDownTextField(
-                        //   dropDownList: snapshot.data as List<DropDownValueModel>,
-                        //   enableSearch: false,
-                        //   dropDownItemCount: 4,
-                        //   readOnly: false,
-                        //   isEnabled: true,
-                        //   controller: controller2,
-                        //   textFieldDecoration: InputDecoration(
-                        //     fillColor: Colors.white,
-                        //     filled: true,
-                        //     hintText: 'File category',
-                        //     border: OutlineInputBorder(
-                        //       borderRadius: BorderRadius.circular(20),
-                        //       gapPadding: 10,
-                        //       borderSide: const BorderSide(
-                        //           color: Colors.black, width: 100),
-                        //     ),
-                        //   ),
-                        // ),
                       ),
                       Padding(
                         padding: const EdgeInsets.all(10),
-                        child: butun,
+                        child: _isLoading
+                            ?  Opacity(opacity: _isVisible,
+                            child: const Center(child: CircularProgressIndicator())) // Show loading indicator when _isLoading is true
+                            : ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _isVisible = 1;
+                              _isLoading = true; // Set _isLoading to true when the button is pressed
+                            });
+                            fileUpload().then((_) {
+                              setState(() {
+                                _isVisible = 0;
+                                _isLoading = false; // Set _isLoading to false when the upload is complete
+                              });
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            primary: const Color(0xFF3d3efd),
+                            onPrimary: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(32.0),
+                            ),
+                          ),
+                          child: const Text(
+                            'Save',
+                            style: TextStyle(fontSize: 21),
+                          ),
+                        ),
                       ),
                     ],
                   ),

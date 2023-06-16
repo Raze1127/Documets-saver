@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_icon/file_icon.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 
 
 class UserDocs extends StatefulWidget {
@@ -53,6 +57,7 @@ class _UserDocsState extends State<UserDocs>
     }
   }
 
+
   Future<bool> _onWillPop() async {
     if (isDocs) {
       switchPage(1, _selectedFolder);
@@ -61,6 +66,32 @@ class _UserDocsState extends State<UserDocs>
     return true; // выходим из приложения или возвращаемся на предыдущий экран
   }
 
+  Future<List<Map<String, dynamic>>> fetchAllDocuments(String userId) async {
+    final dbRef = FirebaseDatabase.instance.ref();
+    final snapshot = await dbRef.child('Users/$userId/folders').get();
+
+    if (snapshot.value != null) {
+      final folders = snapshot.value as Map;
+      final List<Map<String, dynamic>> allDocuments = [];
+
+      folders.forEach((folderName, folderContents) {
+        folderContents.forEach((documentName, documentData) {
+          allDocuments.add({
+            "folder": folderName,
+            "title": documentName,
+            ...documentData
+          });
+        });
+      });
+
+      return allDocuments;
+    }
+
+    return [];
+  }
+
+
+  final _searchController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +115,13 @@ class _UserDocsState extends State<UserDocs>
             Padding(
               padding: const EdgeInsets.all(10.0),
               child: TextField(
+                onChanged: (value) {
+                  setState(() {
+                    calledWidget = buildSearch();
+                    isDocs = true;
+                  });
+                },
+                controller: _searchController,
                 autofillHints: const [AutofillHints.email],
                 cursorColor: Colors.black,
                 textInputAction: TextInputAction.search,
@@ -119,7 +157,27 @@ class _UserDocsState extends State<UserDocs>
     );
   }
 
+  void openFileFromUrl(String url, String format) async {
+    File file;
+    // Get the temporary directory
+    Directory tempDir = await getTemporaryDirectory();
+    String tempPath = tempDir.path;
+
+    // Create a reference to the file
+    final storage = FirebaseStorage.instance.refFromURL(url);
+
+
+    // Download the file to the temporary directory
+    await storage.writeToFile(File('$tempPath/tempFile.$format')).then((_) {
+      // Open the file
+      print('open');
+        OpenFile.open('$tempPath/tempFile.$format');
+    });
+  }
+
   Widget buildDocs(String selectedFolder) {
+    final User? user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid;
     const ValueKey<int>(2);
     final dbRef = FirebaseDatabase.instance.ref();
     return Scaffold(
@@ -128,7 +186,7 @@ class _UserDocsState extends State<UserDocs>
       body: StreamBuilder(
         key: UniqueKey(),
         stream: dbRef
-            .child('userUid/folders/$selectedFolder')
+            .child('Users/$uid/folders/$selectedFolder')
             .onValue,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
@@ -146,7 +204,9 @@ class _UserDocsState extends State<UserDocs>
                   Map<dynamic, dynamic> map = snapshot.data?.snapshot
                       .value as Map;
                   return GestureDetector(
-
+                    onTap: () {
+                      openFileFromUrl(map[item[index]["key"]]["documentLink"], map[item[index]["key"]]["fileFormat"]);
+                    },
                     child: Card(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20.0),
@@ -232,14 +292,137 @@ class _UserDocsState extends State<UserDocs>
                     ),
                   );
                 });
-          } else
-            return CircularProgressIndicator();
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
         },
       ),
     );
   }
 
+
+
+  Widget buildSearch() {
+    final User? user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid;
+    const ValueKey<int>(2);
+    final dbRef = FirebaseDatabase.instance.ref();
+
+    final searchTerm = _searchController.text.toLowerCase();
+    return Scaffold(
+      key: const ValueKey<int>(2),
+      backgroundColor: const Color(0xFF5656f3),
+      body: FutureBuilder(
+        future: fetchAllDocuments(uid!),
+        builder: (BuildContext context, snapshot) {
+          if (snapshot.hasData) {
+            List<Map<String, dynamic>> allDocuments = snapshot.data!;
+            List<Map<String, dynamic>> filteredDocuments = [];
+
+            for (var doc in allDocuments) {
+              if (doc["title"].toString().toLowerCase().contains(searchTerm) ||
+                  doc['tags'].any((tag) => tag.toString().toLowerCase().contains(searchTerm))) {
+                filteredDocuments.add(doc);
+              }
+            }
+
+
+            return GridView.builder(
+                key: const ValueKey<int>(2),
+                itemCount: filteredDocuments.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2
+                ),
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () {
+                      openFileFromUrl(filteredDocuments[index]["documentLink"], filteredDocuments[index]["fileFormat"]);
+                    },
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20.0),
+                      ),
+                      color: const Color(0xFF3d3efd),
+                      elevation: 5,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          FileIcon("doc.${filteredDocuments[index]["fileFormat"]}", size: 72.0),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: MediaQuery.of(context).size.width * 0.2,
+                                child: Text(
+                                  filteredDocuments[index]["title"],
+                                  style: GoogleFonts.roboto(
+                                      textStyle: const TextStyle(
+                                          color: Color(0xFFf5f4f9),
+                                          fontSize: 16,
+                                          shadows: [
+                                            Shadow(offset: Offset(-1.0, -1.0), color: Colors.black),
+                                            Shadow(offset: Offset(1.0, -1.0), color: Colors.black),
+                                            Shadow(offset: Offset(1.0, 1.0), color: Colors.black),
+                                            Shadow(offset: Offset(-1.0, 1.0), color: Colors.black),
+                                          ]
+                                      )
+                                  ),
+                                  overflow: TextOverflow.fade,
+                                  maxLines: 2,
+                                  softWrap: false,
+                                ),
+                              ),
+                              PopupMenuButton<String>(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20.0),
+                                ),
+                                onSelected: (value) {
+                                  // TODO: Handle menu selection
+                                },
+                                itemBuilder: (context) {
+                                  return {
+                                    'Delete': Icons.delete,
+                                    'Share': Icons.share,
+                                    'Download': Icons.cloud_download
+                                  }
+                                      .entries
+                                      .map((entry) {
+                                    return PopupMenuItem<String>(
+                                      value: entry.key,
+                                      child: Row(
+                                        children: <Widget>[
+                                          Icon(entry.value),
+                                          SizedBox(width: 8.0),
+                                          // Добавьте пространство между иконкой и текстом, если нужно
+                                          Text(entry.key),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList();
+                                },
+                              )
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+            );
+
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
+        },
+      ),
+    );
+  }
+
+
+
   Widget buildFolders() {
+    final User? user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid;
     const ValueKey<int>(1);
     final dbRef = FirebaseDatabase.instance.ref();
     return Scaffold(
@@ -248,7 +431,7 @@ class _UserDocsState extends State<UserDocs>
       body: StreamBuilder(
         key: UniqueKey(),
         stream: dbRef
-            .child('userUid/folders')
+            .child('Users/$uid/folders')
             .onValue,
         builder: (context, snapshot) {
           if (snapshot.hasData &&
@@ -319,7 +502,7 @@ class _UserDocsState extends State<UserDocs>
                   );
                 });
           } else {
-            return CircularProgressIndicator();
+            return const Center(child: CircularProgressIndicator());
           }
         },
       ),

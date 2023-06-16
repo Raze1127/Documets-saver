@@ -75,7 +75,7 @@ class mainPage extends StatelessWidget {
             if (snapshot.hasData) {
               return const Home();
             } else {
-              return const Home();
+              return const Login();
             }
           }
       ),
